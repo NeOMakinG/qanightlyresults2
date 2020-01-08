@@ -36,7 +36,9 @@ class GraphController extends BaseController {
             $version = $get_query_params['version'];
         }
         //get the data
+        $executions = Execution::getGraphData($period, $version);
 
+        $response->getBody()->write(json_encode($executions));
         return $response;
     }
 }
