@@ -113,8 +113,7 @@ class ReportController extends BaseController {
         $root_suite = Manager::table('suite')
             ->where('execution_id', '=', $report_id)
             ->where('id', '=', $suite_id)
-            ->get();
-        $root_suite = $root_suite[0];
+            ->first();
         //get tests for this root suite
         $tests = Manager::table('test')
             ->where('suite_id', '=', $suite_id)
