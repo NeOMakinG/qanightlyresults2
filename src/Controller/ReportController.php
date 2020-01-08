@@ -31,8 +31,7 @@ class ReportController extends BaseController {
             }
         }
         //get all data from executions
-        $execution = new Execution();
-        $executions = $execution->getAll();
+        $executions = Execution::getAll();
 
         $full_list = [];
         foreach($executions as $execution) {
