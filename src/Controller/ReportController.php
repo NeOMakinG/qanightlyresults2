@@ -87,21 +87,8 @@ class ReportController extends BaseController {
             //error
             throw new NotFoundException('Report not found');
         }
-        //get suite data
-        $suites = Manager::table('suite')
-            ->where('execution_id', '=', $report_id)
-            ->orderBy('id')
-            ->get();
-        //get tests data
-        $tests = Manager::table('test')
-            ->join('suite', 'test.suite_id', '=', 'suite.id')
-            ->where('suite.execution_id', '=', $report_id)
-            ->select('test.*')
-            ->get();
-        $tests_data = [];
-        foreach($tests as $test) {
-            $tests_data[$test->suite_id][] = $test;
-        }
+        $suites = $this->getReportData($report_id);
+        $tests_data = $this->getTestData($report_id);
         //find the first suite ID
         $first_id = null;
         foreach($suites as $suite) {
@@ -122,25 +109,25 @@ class ReportController extends BaseController {
         $report_id = $route->getArgument('report');
         $suite_id = $route->getArgument('suite');
 
-        $suites = Manager::table('suite')
+        //get suite data
+        $root_suite = Manager::table('suite')
             ->where('execution_id', '=', $report_id)
-            ->orderBy('id')
+            ->where('id', '=', $suite_id)
             ->get();
-        //get tests data
+        $root_suite = $root_suite[0];
+        //get tests for this root suite
         $tests = Manager::table('test')
-            ->join('suite', 'test.suite_id', '=', 'suite.id')
-            ->where('suite.execution_id', '=', $report_id)
-            ->select('test.*')
+            ->where('suite_id', '=', $suite_id)
             ->get();
-        $tests_data = [];
-        foreach($tests as $test) {
-            $tests_data[$test->suite_id][] = $test;
-        }
+        $root_suite->tests = $tests;
+
+        $children_suites = $this->getReportData($report_id);
+        $tests_data = $this->getTestData($report_id);
         //build the recursive tree
-        $suites = $this->buildTree($suites, $tests_data, $suite_id);
+        $suites = $this->buildTree($children_suites, $tests_data, $suite_id);
+        $root_suite->suites = $suites;
         //put suites data into the final object
-        $execution_data['suites_data'] = $suites;
-        $response->getBody()->write(json_encode($execution_data));
+        $response->getBody()->write(json_encode($root_suite));
         return $response;
     }
 
@@ -160,5 +147,25 @@ class ReportController extends BaseController {
             }
         }
         return $branch;
+    }
+
+    private function getReportData($report_id) {
+        return Manager::table('suite')
+            ->where('execution_id', '=', $report_id)
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function getTestData($report_id) {
+        $tests = Manager::table('test')
+            ->join('suite', 'test.suite_id', '=', 'suite.id')
+            ->where('suite.execution_id', '=', $report_id)
+            ->select('test.*')
+            ->get();
+        $tests_data = [];
+        foreach($tests as $test) {
+            $tests_data[$test->suite_id][] = $test;
+        }
+        return $tests_data;
     }
 }
